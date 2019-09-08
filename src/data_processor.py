@@ -21,7 +21,7 @@ from tqdm import tqdm
 #default command: python3 data_processor.py --location US-AZ-753
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--location", default='US-AZ-753', help="Location to be training on. Default is Pheonix, AZ.")
+parser.add_argument("--location", default='US-AZ', help="Location to be training on. Default is AZ.")
 parser.add_argument("--start_time", default=2010, help="Time to start gathering training data from. Default is 2010.")
 parser.add_argument("--disease", default='valley fever', help="Disease to gather relevant training data about. Default is valley fever.")
 args = parser.parse_args()
@@ -92,6 +92,7 @@ def get_weekly_data(queries_list):
 		query_count+=1
 	print("Done!")
 	# print(data_for_each_query)
+	data_for_each_query.index.name='Date'
 	return data_for_each_query
 
 def get_monthly_data(queries_list):
@@ -106,6 +107,7 @@ def get_monthly_data(queries_list):
 		query_count+=1
 	print("Done!")
 	# print(data_for_each_query)
+	data_for_each_query.index.name='Date'
 	return data_for_each_query
 
 def save_data(data_dict, time_frame):
@@ -128,7 +130,7 @@ def save_data(data_dict, time_frame):
 			print("Key error while saving: {}".format(query))
 
 	df = pd.DataFrame(data_dict2, index=dates_index) 
-	df.to_csv('../dumps/{}_{}.csv'.format(args.disease, time_frame))
+	df.to_csv('../dumps/og_{}_{}.csv'.format(args.disease, time_frame))
 	# print(data_dict2)
 	return data_dict2
 
