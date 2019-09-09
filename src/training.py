@@ -1,5 +1,5 @@
 # python3 linux
-# Project:  Keshav
+# Project:  Trendsy
 # Filename: training.py
 # Author:   Raymond G. Nucuta (rnucuta@gmail.com)
 
@@ -22,12 +22,13 @@ training: Script that trains on data from gtrends_neutralizer.
 
 
 import argparse
-import os
 from datetime import datetime
 import pandas as pd
 from sklearn import preprocessing
 from sklearn.model_selection import train_test_split
 import joblib
+import copy
+import os
 
 # le = preprocessing.LabelEncoder()
 
@@ -51,7 +52,7 @@ def preprocess(month_df):
 
 # split training and validation data
 def split_data(data, target):
-	return train_test_split(data,target, test_size = 0.1)
+	return train_test_split(data,target, test_size = 0.2)
 
 # import a training algorithm and train and save weights
 def lasso_train(data_train, data_test, target_train, target_test):
@@ -65,10 +66,20 @@ def lasso_train(data_train, data_test, target_train, target_test):
 def elasticNet_train(data_train, data_test, target_train, target_test):
 	from sklearn import linear_model
 	from sklearn.metrics import explained_variance_score, r2_score
-	reg = linear_model.ElasticNet(alpha=0.1, l1_ratio=0.7)
-	pred=reg.fit(data_train, target_train).predict(data_test)
-	print("ElasticNet accuracy: ",explained_variance_score(target_test, pred))
-	print("ElasticNet R^2: ",r2_score(target_test, pred))
+	best_model=None
+	best_variance=0
+	best_r2=0
+	for i in range(10):
+		reg = linear_model.ElasticNet(alpha=0.1, l1_ratio=0.7)
+		model=reg.fit(data_train, target_train)
+		pred=model.predict(data_test)
+		if(explained_variance_score(target_test, pred)>best_variance):
+			best_model=copy.deepcopy(model)
+			best_variance=float(explained_variance_score(target_test, pred))
+			best_r2=float(r2_score(target_test, pred))
+	print("ElasticNet accuracy: ",best_variance)
+	print("ElasticNet R^2: ",best_r2)
+	return best_model, best_variance
 
 def ridge_train(data_train, data_test, target_train, target_test):
 	from sklearn import linear_model
@@ -86,14 +97,31 @@ def svm_train(data_train, data_test, target_train, target_test, kernel_type='lin
 	print("Ridge Regression accuracy: ",explained_variance_score(target_test, pred))
 	print("SVM R^2: ",r2_score(target_test, pred))
 
+def choose_model(t_type, data_train, data_test, target_train, target_test):
+	if t_type=="lasso":
+		return lasso_train(data_train, data_test, target_train, target_test)
+	elif t_type=="elastic_net":
+		return elasticNet_train(data_train, data_test, target_train, target_test)
+	elif t_type=="ridge":
+		return ridge_train(data_train, data_test, target_train, target_test)
+	elif t_type=="svm_linear":
+		return svm_train(data_train, data_test, target_train, target_test)
+	elif t_type=="svm_rbf":
+		return svm_train(data_train, data_test, target_train, target_test, 'rbf')
+	else:
+		print("Incorrect argument for --training_type. Try again.")
+
 if __name__ == '__main__':
     # Parse command line arguments.
+
+    #default command: python3 training.py --disease_freq "valley fever_weeklyData.csv" --training_type "elastic_net"
+
     parser = argparse.ArgumentParser(description=__doc__)
     # Data files/directories.
     parser.add_argument('--disease_freq', required=True, \
                         help='name of .csv file with weekly trends/incidence data that is in /dumps')
-    # parser.add_argument('--model_file', required=True, \
-    #                     help='name of model file that will after training is completed')
+    parser.add_argument('--training_type', required=True, \
+                        help=r'options: {"lasso", elastic_net, ridge, svm_linear, svm_rbf}')
     args = parser.parse_args()
 
     loaded_df=load_data(args.disease_freq)
@@ -102,4 +130,9 @@ if __name__ == '__main__':
 
     data_train, data_test, target_train, target_test=split_data(features_data,target_data)
 
-    elasticNet_train(data_train, data_test, target_train, target_test)
+    trained_model, trained_variance = choose_model(args.training_type, data_train, data_test, target_train, target_test)
+
+    if trained_model!=None:
+    	# log_time=datetime.now() str(log_time)[:str(log_time).index('.')].replace(':', '.').replace(" ", "--")+"--"
+    	logs_file_location=os.path.abspath(os.path.join(os.path.dirname( __file__ ), '..', 'models',args.training_type+" acc "+str(round(trained_variance,3))+".sav"))
+    	joblib.dump(trained_model, logs_file_location)

@@ -1,5 +1,5 @@
 # python3 linux
-# Project:  Keshav
+# Project:  Trendsy
 # Filename: gtrends_downloader.py
 # Author:   Raymond G. Nucuta (rnucuta@gmail.com)
 
