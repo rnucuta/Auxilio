@@ -14,16 +14,21 @@ import argparse
 from pytrends.request import TrendReq
 import pandas as pd
 from datetime import datetime
+import joblib
+import os
+
+def load_model(model_file):
+    return joblib.load(os.path.abspath(os.path.join(os.path.dirname( __file__ ), '..', 'models',model_file)))
 
 if __name__ == '__main__':
     # Parse command line arguments.
 
-    #default command: python3 inference.py --disease_freq "valley fever_weeklyData.csv"
+    #default command: python3 inference.py --model_file "elastic_net acc 0.305.sav"
 
     parser = argparse.ArgumentParser(description=__doc__)
     # Data files/directories.
     parser.add_argument('--model_file', required=True, \
-                        help='name of .csv file with weekly trends/incidence data that is in /dumps')
-    # parser.add_argument('--model_file', required=True, \
-    #                     help='name of model file that will after training is completed')
+                        help='name of .sav file of a trained model that is in /models')
     args = parser.parse_args()
+
+    load_model=load_model(args.model_file)
