@@ -21,6 +21,10 @@ training: Script that trains on data from gtrends_neutralizer.
 # -Yes: Ridge Regression, SVR(kernel='linear'), SVR(kernel='rbf'), Ensemble Regressors
 
 
+# BEST MODEL: KNEIGHBORS CLASSIFIER
+# try svc/ensemble classifiers next
+
+
 import argparse
 from datetime import datetime
 import pandas as pd
@@ -43,11 +47,11 @@ def load_data(csv_name):
 # preprocess all the data into target and features
 def preprocess(month_df):
 	# select columns other than 'DiseaseIncidence'
-	cols = [col for col in month_df.columns if col not in ['DiseaseIncidence']]
+	cols = [col for col in month_df.columns if col not in ['DiseaseIncidence', 'AdjustedDiseaseIncidence', 'LOW', 'MEDIUM']]
 	# dropping the 'DiseaseIncidence' column
 	data = month_df[cols]
 	#assigning the DiseaseIncidence column as target
-	target = month_df['DiseaseIncidence']
+	target = month_df['AdjustedDiseaseIncidence']
 	return data,target
 
 # split training and validation data
@@ -97,6 +101,36 @@ def svm_train(data_train, data_test, target_train, target_test, kernel_type='lin
 	print("Ridge Regression accuracy: ",explained_variance_score(target_test, pred))
 	print("SVM R^2: ",r2_score(target_test, pred))
 
+def svc_train(data_train, data_test, target_train, target_test):
+	from sklearn.svm import LinearSVC
+	from sklearn.metrics import accuracy_score
+	best_model=None
+	best_variance=0
+	for i in range(10):
+		reg = LinearSVC(random_state=0)
+		model=reg.fit(data_train, target_train)
+		pred=model.predict(data_test)
+		if(accuracy_score(target_test, pred, normalize = True)>best_variance):
+			best_model=copy.deepcopy(model)
+			best_variance=float(accuracy_score(target_test, pred, normalize = True))
+	print("LinearSVC accuracy: ",best_variance)
+	return best_model, best_variance
+
+def KNeighbors_train(data_train, data_test, target_train, target_test):
+	from sklearn.neighbors import KNeighborsClassifier
+	from sklearn.metrics import accuracy_score
+	best_model=None
+	best_variance=0
+	for i in range(10):
+		reg = KNeighborsClassifier(n_neighbors=3)
+		model=reg.fit(data_train, target_train)
+		pred=reg.predict(data_test)
+		if(accuracy_score(target_test, pred)>best_variance):
+			best_model=copy.deepcopy(model)
+			best_variance=float(accuracy_score(target_test, pred))
+	print ("KNeighbors accuracy score : ", best_variance)
+	return best_model, best_variance
+
 def choose_model(t_type, data_train, data_test, target_train, target_test):
 	if t_type=="lasso":
 		return lasso_train(data_train, data_test, target_train, target_test)
@@ -108,8 +142,13 @@ def choose_model(t_type, data_train, data_test, target_train, target_test):
 		return svm_train(data_train, data_test, target_train, target_test)
 	elif t_type=="svm_rbf":
 		return svm_train(data_train, data_test, target_train, target_test, 'rbf')
+	elif t_type=="svc":
+		return svc_train(data_train, data_test, target_train, target_test)
+	elif t_type=="KNeighbors":
+		return KNeighbors_train(data_train, data_test, target_train, target_test)
 	else:
 		print("Incorrect argument for --training_type. Try again.")
+
 
 if __name__ == '__main__':
     # Parse command line arguments.
@@ -121,7 +160,7 @@ if __name__ == '__main__':
     parser.add_argument('--disease_freq', required=True, \
                         help='name of .csv file with weekly trends/incidence data that is in /dumps')
     parser.add_argument('--training_type', required=True, \
-                        help=r'options: {"lasso", elastic_net, ridge, svm_linear, svm_rbf}')
+                        help=r'options: {"lasso", elastic_net, ridge, svm_linear, svm_rbf, svc, KNeighbors}')
     args = parser.parse_args()
 
     loaded_df=load_data(args.disease_freq)
