@@ -89,10 +89,10 @@ def infer(loaded_model, data):
         print(color.PURPLE+"LOW INCIDENCE"+color.END)
         return "LOW"
     if output==1:
-        print(color.PURPLE+"MEDIUM INCIDENCE"+color.END)
+        print(color.RED+"MEDIUM INCIDENCE"+color.END)
         return "MEDIUM"
     elif output==2:
-        print(color.PURPLE+"HIGH INCIDENCE"+color.END)
+        print(color.YELLOW+"HIGH INCIDENCE"+color.END)
         return "HIGH"
     else:
         print(color.RED+"Inference gave error?!"+color.END)

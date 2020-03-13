@@ -33,15 +33,38 @@ from sklearn.model_selection import train_test_split
 import joblib
 import copy
 import os
+import numpy as np
 
 # le = preprocessing.LabelEncoder()
+
+def categorizer(number):
+	if number<30:
+		return 0
+	if number>70:
+		return 2
+	else: 
+		return 1
+
+def incidence_categorizer(number):
+	if number>94:
+		return 1
+	else:
+		return 0
 
 # transform each date into just the month number
 def load_data(csv_name):
 	df = pd.read_csv('../dumps/'+csv_name)
+	cols = [col for col in df.columns if col not in ['Date','DiseaseIncidence', 'AdjustedDiseaseIncidence', 'LOW', 'MEDIUM']]
+	# colss = [col for col in df.columns if col not in ['Date', 'LOW', 'MEDIUM']]
 	for i in range(len(df.index)):
 		temp_date=datetime.strptime(df.at[i,"Date"], '%m/%d/%Y %M:%S')
 		df.at[i,'Date']=int(temp_date.month)
+		df.at[i, 'DiseaseIncidence']=categorizer(df.at[i, 'DiseaseIncidence'])
+		for col in cols:
+			df.at[i, col]=categorizer(int(df.at[i, col]))
+	# for i in range(len(df.index)):
+	# 	for col in colss:
+	# 		df.at[i, col]-=1
 	return df
 
 # preprocess all the data into target and features
@@ -50,13 +73,14 @@ def preprocess(month_df):
 	cols = [col for col in month_df.columns if col not in ['DiseaseIncidence', 'AdjustedDiseaseIncidence', 'LOW', 'MEDIUM']]
 	# dropping the 'DiseaseIncidence' column
 	data = month_df[cols]
+	print(data)
 	#assigning the DiseaseIncidence column as target
-	target = month_df['AdjustedDiseaseIncidence']
+	target = month_df['DiseaseIncidence']
 	return data,target
 
 # split training and validation data
 def split_data(data, target):
-	return train_test_split(data,target, test_size = 0.2)
+	return train_test_split(data,target, test_size = 0.2, random_state=42)
 
 # import a training algorithm and train and save weights
 def lasso_train(data_train, data_test, target_train, target_test):
@@ -116,13 +140,31 @@ def svc_train(data_train, data_test, target_train, target_test):
 	print("LinearSVC accuracy: ",best_variance)
 	return best_model, best_variance
 
+# def KNeighbors_train(data_train, data_test, target_train, target_test):
+# 	from sklearn.neighbors import KNeighborsClassifier
+# 	from sklearn.neighbors import NeighborhoodComponentsAnalysis
+# 	from sklearn.metrics import accuracy_score
+# 	nca = NeighborhoodComponentsAnalysis(random_state=42)
+# 	nca.fit(data_train, target_train)
+# 	best_model=None
+# 	best_variance=0
+# 	for i in range(10):
+# 		reg = KNeighborsClassifier(n_neighbors=17)
+# 		model=reg.fit(data_train, target_train)
+# 		# pred=reg.predict(data_test)
+# 		if(reg.score(nca.transform(data_test), target_test)>best_variance):
+# 			best_model=copy.deepcopy(model)
+# 			best_variance=float(reg.score(nca.transform(data_test), target_test))
+# 	print ("KNeighbors accuracy score : ", best_variance)
+# 	return best_model, best_variance
+
 def KNeighbors_train(data_train, data_test, target_train, target_test):
 	from sklearn.neighbors import KNeighborsClassifier
 	from sklearn.metrics import accuracy_score
 	best_model=None
 	best_variance=0
 	for i in range(10):
-		reg = KNeighborsClassifier(n_neighbors=3)
+		reg = KNeighborsClassifier(n_neighbors=17)
 		model=reg.fit(data_train, target_train)
 		pred=reg.predict(data_test)
 		if(accuracy_score(target_test, pred)>best_variance):
@@ -130,6 +172,18 @@ def KNeighbors_train(data_train, data_test, target_train, target_test):
 			best_variance=float(accuracy_score(target_test, pred))
 	print ("KNeighbors accuracy score : ", best_variance)
 	return best_model, best_variance
+
+# def KNeighbors_train(data_train, data_test, target_train, target_test):
+# 	from sklearn.neighbors import KNeighborsClassifier
+# 	from sklearn.metrics import accuracy_score
+# 	from sklearn.model_selection import GridSearchCV
+# 	knn2 = KNeighborsClassifier()
+# 	param_grid = {'n_neighbors': np.arange(1, 25)}
+# 	knn_gscv = GridSearchCV(knn2, param_grid, cv=5)
+# 	knn_gscv.fit(data_train, target_train)
+# 	print(knn_gscv.best_params_)
+# 	print(knn_gscv.best_score_)
+# 	return knn2, 0.1
 
 def choose_model(t_type, data_train, data_test, target_train, target_test):
 	if t_type=="lasso":

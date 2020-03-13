@@ -27,14 +27,36 @@ function number_format(number, decimals, dec_point, thousands_sep) {
   return s.join(dec);
 }
 
+var request = new XMLHttpRequest();
+
+var labelz=[];
+var dataz=[];
+
+request.open('GET', 'https://v2-api.sheety.co/798b5565c6c19df6e509d6b1a4aa0540/auxilio/sheet1', true);
+request.onload = function() {
+  // Begin accessing JSON data here
+  var data = JSON.parse(this.response);
+
+  console.log('hi');
+  document.getElementById("dis-suggestion").innerText=data['sheet1'][0]['weeklyPrediction'];
+  var length_data=data['sheet1'].length;
+  var i;
+  for (i=length_data-13;i<length_data;i++){
+    labelz.push(data['sheet1'][i]['date']);
+    dataz.push(data['sheet1'][i]['diseaseIncidence']);
+  }
+}
+
+request.send();
+
 // Area Chart Example
 var ctx = document.getElementById("myAreaChart");
 var myLineChart = new Chart(ctx, {
   type: 'line',
   data: {
-    labels: ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"],
+    labels: labelz,
     datasets: [{
-      label: "Earnings",
+      label: "Disease Incidence",
       lineTension: 0.3,
       backgroundColor: "rgba(78, 115, 223, 0.05)",
       borderColor: "rgba(78, 115, 223, 1)",
@@ -46,7 +68,7 @@ var myLineChart = new Chart(ctx, {
       pointHoverBorderColor: "rgba(78, 115, 223, 1)",
       pointHitRadius: 10,
       pointBorderWidth: 2,
-      data: [0, 10000, 5000, 15000, 10000, 20000, 15000, 25000, 20000, 30000, 25000, 40000],
+      data: dataz,
     }],
   },
   options: {
@@ -78,7 +100,7 @@ var myLineChart = new Chart(ctx, {
           padding: 10,
           // Include a dollar sign in the ticks
           callback: function(value, index, values) {
-            return '$' + number_format(value);
+            return number_format(value);
           }
         },
         gridLines: {
@@ -110,7 +132,7 @@ var myLineChart = new Chart(ctx, {
       callbacks: {
         label: function(tooltipItem, chart) {
           var datasetLabel = chart.datasets[tooltipItem.datasetIndex].label || '';
-          return datasetLabel + ': $' + number_format(tooltipItem.yLabel);
+          return datasetLabel + ': ' + number_format(tooltipItem.yLabel);
         }
       }
     }
